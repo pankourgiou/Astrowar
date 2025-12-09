@@ -1,0 +1,1 @@
+It's a simple math game in python programming language. You are a turtle!! and you need to defeat the zodiac symbols. Easy, simple math, but what counts more here is the philosophy behind the game...!!!it's some fun! Practice makes best!
