@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Turtle vs Zodiac — Multi-Battle Edition</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: "Courier New", monospace;
+      overflow: hidden;
+    }
+
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at center, #111 0%, #000 100%);
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: cyan;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    #message {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      top: 35%;
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    #symbol {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      top: 18%;
+      font-size: 90px;
+      color: yellow;
+    }
+
+    #player {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 80px;
+    }
+
+    #questionBox {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      top: 55%;
+    }
+
+    input {
+      padding: 10px;
+      font-size: 20px;
+      width: 220px;
+      text-align: center;
+      background: #111;
+      border: 2px solid cyan;
+      color: white;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-left: 10px;
+      cursor: pointer;
+      background: cyan;
+      border: none;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #enemyHealth {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      top: 48%;
+      font-size: 24px;
+      color: lightgreen;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <div id="hud">Score: 0 | Health: 3</div>
+
+  <div id="symbol"></div>
+
+  <div id="message">Turtle vs Zodiac</div>
+
+  <div id="enemyHealth"></div>
+
+  <div id="questionBox" class="hidden">
+    <input type="text" id="answerInput" placeholder="Your answer"/>
+    <button onclick="submitAnswer()">Attack</button>
+  </div>
+
+  <div id="player">🐢</div>
+
+</div>
+
+<script>
+  // -------------------------------
+  // CONFIG
+  // -------------------------------
+  const STARTING_HEALTH = 3;
+  const SCORE_PER_WIN = 10;
+  const HARD_MODE_START = 6;
+  const ZODIAC_HEALTH = 3;
+  const BOSS_HEALTH = 5;
+
+  const zodiacs = [
+    ["Aries", "♈"],
+    ["Taurus", "♉"],
+    ["Gemini", "♊"],
+    ["Cancer", "♋"],
+    ["Leo", "♌"],
+    ["Virgo", "♍"],
+    ["Libra", "♎"],
+    ["Scorpio", "♏"],
+    ["Sagittarius", "♐"],
+    ["Capricorn", "♑"],
+    ["Aquarius", "♒"]
+  ];
+
+  const FINAL_BOSS = ["Pisces — The Zodiac Overlord", "♓"];
+
+  // -------------------------------
+  // GAME STATE
+  // -------------------------------
+  let score = 0;
+  let health = STARTING_HEALTH;
+
+  let currentEnemyIndex = 0;
+  let enemyHealth = ZODIAC_HEALTH;
+
+  let currentCorrectAnswer = 0;
+
+  // -------------------------------
+  // DOM ELEMENTS
+  // -------------------------------
+  const hud = document.getElementById("hud");
+  const message = document.getElementById("message");
+  const symbol = document.getElementById("symbol");
+  const enemyHealthText = document.getElementById("enemyHealth");
+  const questionBox = document.getElementById("questionBox");
+  const answerInput = document.getElementById("answerInput");
+
+  // -------------------------------
+  // HUD
+  // -------------------------------
+  function updateHUD() {
+    hud.textContent = `Score: ${score} | Health: ${health}`;
+  }
+
+  function showMessage(text, color="white") {
+    message.style.color = color;
+    message.textContent = text;
+  }
+
+  // -------------------------------
+  // PROBLEM GENERATOR
+  // -------------------------------
+  function generateProblem(hardMode=false, boss=false) {
+
+    const ops = ["+", "-", "*", "/"];
+    const op = ops[Math.floor(Math.random() * ops.length)];
+
+    let a, b;
+
+    if (boss) {
+      a = randomInt(20, 60);
+      b = randomInt(2, 20);
+    }
+    else if (hardMode) {
+      a = randomInt(10, 25);
+      b = randomInt(1, 15);
+    }
+    else {
+      a = randomInt(1, 10);
+      b = randomInt(1, 10);
+    }
+
+    if (op === "/") {
+      a = a * b;
+    }
+
+    let answer;
+
+    switch(op) {
+      case "+":
+        answer = a + b;
+        break;
+      case "-":
+        answer = a - b;
+        break;
+      case "*":
+        answer = a * b;
+        break;
+      case "/":
+        answer = a / b;
+        break;
+    }
+
+    return {
+      question: `What is ${a} ${op} ${b}?`,
+      answer: answer
+    };
+  }
+
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  // -------------------------------
+  // START BATTLE
+  // -------------------------------
+  function startBattle() {
+
+    if (currentEnemyIndex < zodiacs.length) {
+
+      const [name, zodiacSymbol] = zodiacs[currentEnemyIndex];
+
+      const hardMode = currentEnemyIndex >= HARD_MODE_START;
+
+      enemyHealth = ZODIAC_HEALTH;
+
+      symbol.textContent = zodiacSymbol;
+
+      showMessage(`${name} challenges you!`, "yellow");
+
+      setTimeout(() => {
+        askQuestion(hardMode, false);
+      }, 1200);
+
+    }
+    else {
+      startBossBattle();
+    }
+  }
+
+  // -------------------------------
+  // BOSS BATTLE
+  // -------------------------------
+  function startBossBattle() {
+
+    const [name, zodiacSymbol] = FINAL_BOSS;
+
+    enemyHealth = BOSS_HEALTH;
+
+    symbol.textContent = zodiacSymbol;
+
+    showMessage("⚡ FINAL BOSS APPROACHES ⚡", "orange");
+
+    setTimeout(() => {
+      showMessage(`${name} challenges you!`, "yellow");
+      setTimeout(() => {
+        askQuestion(true, true);
+      }, 1200);
+    }, 1800);
+  }
+
+  // -------------------------------
+  // ASK QUESTION
+  // -------------------------------
+  function askQuestion(hardMode, bossMode) {
+
+    const problem = generateProblem(hardMode, bossMode);
+
+    currentCorrectAnswer = problem.answer;
+
+    showMessage(problem.question, "white");
+
+    enemyHealthText.textContent = `Enemy HP: ${enemyHealth}`;
+
+    questionBox.classList.remove("hidden");
+
+    answerInput.value = "";
+    answerInput.focus();
+  }
+
+  // -------------------------------
+  // SUBMIT ANSWER
+  // -------------------------------
+  function submitAnswer() {
+
+    const value = answerInput.value.trim();
+
+    if (value === "" || isNaN(value)) {
+      health--;
+      showMessage("Invalid input! You took damage!", "red");
+    }
+    else if (parseInt(value) === currentCorrectAnswer) {
+
+      enemyHealth--;
+      score += SCORE_PER_WIN;
+
+      showMessage(`Hit! Enemy HP: ${enemyHealth}`, "lightgreen");
+    }
+    else {
+      health--;
+      showMessage("Wrong answer! You took damage!", "red");
+    }
+
+    updateHUD();
+
+    if (health <= 0) {
+      gameOver();
+      return;
+    }
+
+    setTimeout(() => {
+
+      if (enemyHealth <= 0) {
+
+        currentEnemyIndex++;
+
+        if (currentEnemyIndex > zodiacs.length) {
+          victory();
+        }
+        else {
+          startBattle();
+        }
+      }
+      else {
+
+        const isBoss = currentEnemyIndex >= zodiacs.length;
+        const hardMode = currentEnemyIndex >= HARD_MODE_START;
+
+        askQuestion(hardMode, isBoss);
+      }
+
+    }, 1200);
+  }
+
+  // -------------------------------
+  // END STATES
+  // -------------------------------
+  function gameOver() {
+    questionBox.classList.add("hidden");
+    symbol.textContent = "☠";
+    enemyHealthText.textContent = "";
+    showMessage("GAME OVER — You lost!", "red");
+  }
+
+  function victory() {
+    questionBox.classList.add("hidden");
+    symbol.textContent = "🏆";
+    enemyHealthText.textContent = "";
+    showMessage("YOU DEFEATED THE ZODIAC OVERLORD!", "lightgreen");
+  }
+
+  // ENTER KEY SUPPORT
+  answerInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      submitAnswer();
+    }
+  });
+
+  // -------------------------------
+  // START GAME
+  // -------------------------------
+  updateHUD();
+  startBattle();
+
+</script>
+
+</body>
+</html>
